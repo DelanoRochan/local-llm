@@ -1,16 +1,70 @@
 # local-llm
-Personal research on optimal parameters and stack for local LLM on Apple Macbook Pro M3+ series.
+Personal research on optimal stack and LLM parameters for running a local agent on Apple Macbook Pro M3+ series.
+
+## Goals
+- [ ] Use as daily driver for fullstack coding
+- [ ] Use with image input, OCR should work great (screen grab UI or error)
+- [ ] Can find its way through a complex codebase
+- [ ] Great tool calling (bash, curl, cat, etc.)
+- [ ] Streaming output?
 
 ## Agents that support LLM on localhost
-I'm using Cursor as main IDE:
+I'm using Cursor as main IDE with Claude Code and using headroom with `headroom wrap claude` to achieve token compression.
+
+Other options:
 - [ ] Cline VSCode extension
-- [ ] Claude Code in terminal
 - [ ] Cursor Agent (partial, all traffic goes through cursor servers, hence needs a reverse proxy to localhost)
 
 ## Ideal token pipeline
 - [ ] llama.cpp (GGUF vs MLX) > ollama > LM studio
 - [ ] Consider using a fork of llama.cpp that supports *TurboQuant*
 - [ ] use Headroom for context / token compression
+
+## Learnings
+- CLAUDE.md is essential
+- Limit available tools to e.g. "Bash,Edit,Read,Write,Glob,Grep"
+- Agent choise is essential
+- 
+
+## CLAUDE.md is essential
+
+```bash
+➜  local-llm git:(main) ✗ claude --version
+2.1.207 (Claude Code)
+➜  local-llm git:(main) ✗ 
+```
+
+```markdown
+# Project instructions
+
+## Response style
+
+- Be concise and direct.
+- Use tools immediately instead of narrating what you intend to do.
+- Do not repeatedly say that you will inspect, search, or read something.
+- Do not reread unchanged files.
+- When a tool returns file contents, analyze those contents directly.
+- Do not infer file contents from filenames.
+- Keep normal final responses under five concise bullets unless more detail is requested.
+- Avoid repeating information already established in the conversation.
+
+## Tool behavior
+
+- Use Bash when current system information is requested, such as date, time, processes, files, or environment variables.
+- Prefer targeted searches over broad repository scans.
+- Read the smallest set of files necessary to answer the question.
+- When analyzing scripts, refer to the actual variables and commands found in them.
+- After editing shell scripts, run `bash -n <script>` to check syntax.
+- Do not make destructive changes without explicit approval.
+
+## Local LLM architecture
+
+- `start-llama.sh` starts llama.cpp on `127.0.0.1:8080`.
+- `start-headroom-claude.sh` starts Claude Code through Headroom.
+- Headroom proxies Anthropic requests to the llama.cpp server.
+- The llama.cpp model alias is `qwen3-vl-30b-a3b`.
+- Stop all child processes cleanly when the orchestrating script exits.
+```
 
 ## Example
 

@@ -52,9 +52,14 @@ fi
 # --host 127.0.0.1 \
 # --port 8080
 
+
+#unsloth/Qwen3.6-27B-GGUF:UD-Q5_K_XL
+#Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF:Q4_K_M
+
 ARGS=(
-    -hf "Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF:Q4_K_M"
-    --alias "qwen3-vl-30b-a3b"
+    --hf-repo "unsloth/Qwen3.6-27B-GGUF"
+    --hf-file "Qwen3.6-27B-UD-Q5_K_XL.gguf"
+    --alias "qwen3.6-27b"
     -ngl 999
     -c 32768
     --parallel 1

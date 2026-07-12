@@ -1,48 +1,125 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# start.sh - Combined launcher for llama and headroom-claude
+# ── Configuration ──────────────────────────────────────────────────
+LLAMA_SERVER="$HOME/ai/bin/turboquant-current/llama-server"
+LLAMA_HOST="127.0.0.1"
+LLAMA_PORT="8080"
+LLAMA_CTX=32768
 
-# Check if tmux is available for better output management
-if command -v tmux > /dev/null 2>&1; then
-    echo "Using tmux for output management..."
+# Default model (HuggingFace GGUF selector, e.g. "Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF:Q4_K_M")
+MODEL="${1:-}"
 
-    # Create a new tmux session with two panes
-    tmux new-session -d -s local_llm_session -n "llama" "bash -c 'echo "\n--- LLAMA SERVER OUTPUT ---\n"; cd /Users/delano.keuter/development/local-llm; bash start-llama.sh; echo "\n--- LLAMA SERVER ENDED ---\n"'"
+# ── Model → Claude alias mapping ───────────────────────────────────
+resolve_alias() {
+    local name="$1"
+    # Strip the quantization suffix after ':' and the repo prefix before '/'
+    local bare="${name#*/}"
+    bare="${bare%%:*}"
 
-    # Split the pane horizontally and run headroom-claude in the second pane
-    tmux split-window -h -t local_llm_session:0 "bash -c 'echo "\n--- HEADROOM-CLAUSE OUTPUT ---\n"; cd /Users/delano.keuter/development/local-llm; bash start-headroom-claude.sh; echo "\n--- HEADROOM-CLAUSE ENDED ---\n"'"
+    case "$bare" in
+        Qwen3.6-27B*)              echo "qwen3.6-27b" ;;
+        Qwen3-VL-30B-A3B*)         echo "qwen3-vl-30b-a3b" ;;
+        Qwen3-VL-32B*)             echo "qwen3-vl-32b" ;;
+        *)
+            echo "Error: Unsupported model: $name" >&2
+            echo "Supported patterns: Qwen3.6-27B, Qwen3-VL-30B-A3B, Qwen3-VL-32B" >&2
+            exit 1
+            ;;
+    esac
+}
 
-    # Attach to the session
-    tmux -2 attach-session -t local_llm_session
+# ── Process tracking ───────────────────────────────────────────────
+LLAMA_PID=""
+HEADROOM_PID=""
 
-    # Clean up when detached
-    trap "tmux kill-session -t local_llm_session" EXIT
-
-    # Exit with status from the last command
+cleanup() {
+    echo "" >&2
+    echo "[start.sh] Shutting down..." >&2
+    [[ -n "$HEADROOM_PID" ]] && kill "$HEADROOM_PID" 2>/dev/null && echo "  [stop] headroom/claude (PID $HEADROOM_PID)" >&2
+    [[ -n "$LLAMA_PID" ]]    && kill "$LLAMA_PID"    2>/dev/null && echo "  [stop] llama-server (PID $LLAMA_PID)" >&2
+    wait 2>/dev/null
+    echo "[start.sh] Done." >&2
     exit 0
+}
 
-# Fallback: if tmux is not available, run both in background
-else
-    echo "tmux not found. Running both processes in background..."
+trap cleanup SIGINT SIGTERM
 
-    # Start llama server in background
-    echo "Starting llama server..."
-    cd /Users/delano.keuter/development/local-llm && bash start-llama.sh &
-    LLAMA_PID=$!
-
-    # Start headroom-claude in background
-    echo "Starting headroom-claude..."
-    cd /Users/delano.keuter/development/local-llm && bash start-headroom-claude.sh &
-    HEADROOM_PID=$!
-
-    # Print PIDs for reference
-    echo "Llama server PID: $LLAMA_PID"
-    echo "Headroom-claude PID: $HEADROOM_PID"
-
-    # Wait for both processes to complete (or Ctrl+C to interrupt)
-    wait $LLAMA_PID $HEADROOM_PID
-
-    # Clean up
-    echo "Both processes have completed."
-    exit 0
+# ── Validation ─────────────────────────────────────────────────────
+if [[ -z "$MODEL" ]]; then
+    echo "Usage: $0 <hf-model>" >&2
+    echo "" >&2
+    echo "Examples:" >&2
+    echo "  $0 unsloth/Qwen3.6-27B-GGUF:Q5_K_XL" >&2
+    echo "  $0 Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF:Q4_K_M" >&2
+    exit 1
 fi
+
+if [[ ! -x "$LLAMA_SERVER" ]]; then
+    echo "Error: llama-server not found or not executable:" >&2
+    echo "  $LLAMA_SERVER" >&2
+    exit 1
+fi
+
+ALIAS=$(resolve_alias "$MODEL")
+echo "[start.sh] Model: $MODEL  →  Alias: $ALIAS" >&2
+
+# ── Start llama.cpp server ─────────────────────────────────────────
+echo "[start.sh] Starting llama-server ..."
+"$LLAMA_SERVER" --version
+
+ARGS=(
+    --hf-repo "${MODEL%%:*}"          # repo part before ':'
+    --hf-file "${MODEL##*/}"          # filename (with quant suffix)
+    --alias "$ALIAS"
+    -ngl 999
+    -c "$LLAMA_CTX"
+    --parallel 1
+    -b 2048
+    -ub 1024
+    -fa on
+    --jinja
+    --cache-type-k q8_0
+    --cache-type-v turbo3
+    -lv 1
+    --host "$LLAMA_HOST"
+    --port "$LLAMA_PORT"
+)
+
+"$LLAMA_SERVER" "${ARGS[@]}" &
+LLAMA_PID=$!
+
+# Wait for llama to be ready
+echo "[start.sh] Waiting for llama-server on ${LLAMA_HOST}:${LLAMA_PORT} ..."
+for i in $(seq 1 30); do
+    if curl -sf "http://${LLAMA_HOST}:${LLAMA_PORT}/health" >/dev/null 2>&1; then
+        echo "[start.sh] llama-server ready (PID $LLAMA_PID)" >&2
+        break
+    fi
+    if ! kill -0 "$LLAMA_PID" 2>/dev/null; then
+        echo "[start.sh] llama-server exited unexpectedly!" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+# ── Start Headroom → Claude Code ───────────────────────────────────
+export ANTHROPIC_TARGET_API_URL="http://${LLAMA_HOST}:${LLAMA_PORT}"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$ALIAS"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$ALIAS"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$ALIAS"
+export ANTHROPIC_AUTH_TOKEN=local
+unset ANTHROPIC_API_KEY
+
+echo "[start.sh] Starting headroom/claude with alias $ALIAS ..."
+headroom wrap claude -- \
+    --model "$ALIAS" \
+    --tools "Bash,Edit,Read,Write,Glob,Grep" \
+    --disallowedTools "mcp__*" &
+HEADROOM_PID=$!
+
+echo "[start.sh] All running — llama($LLAMA_PID) headroom($HEADROOM_PID)" >&2
+
+# ── Foreground wait ────────────────────────────────────────────────
+# wait returns when the last background job exits; trap handles cleanup.
+wait
