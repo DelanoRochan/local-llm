@@ -55,11 +55,3 @@ Keep it under 150 lines.
 
 Read it once at the beginning of a resumed session or after context compaction.
 Do not repeatedly read it during every tool call.
-
-## Local LLM architecture
-
-- `start-llama.sh` starts llama.cpp on `127.0.0.1:8080`.
-- `start-headroom-claude.sh` starts Claude Code through Headroom.
-- Headroom proxies Anthropic requests to the llama.cpp server.
-- The llama.cpp model alias is `qwen3-vl-30b-a3b`.
-- Stop all child processes cleanly when the orchestrating script exits.

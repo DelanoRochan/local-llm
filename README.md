@@ -8,6 +8,13 @@ Personal research on optimal stack and LLM parameters for running a local agent 
 - [ ] Great tool calling (bash, curl, cat, etc.)
 - [ ] Streaming output?
 
+## Experiment 1: oMLX + headroom + claude code
+
+
+## Experiment 2: llama.cpp w/ Turboquant + headroom + claude code
+
+
+
 ## Agents that support LLM on localhost
 I'm using Cursor as main IDE with Claude Code and using headroom with `headroom wrap claude` to achieve token compression.
 
@@ -20,13 +27,42 @@ Other options:
 - [ ] Consider using a fork of llama.cpp that supports *TurboQuant*
 - [ ] use Headroom for context / token compression
 
+## Prompt for having multiple models (one general, one great at coding)
+"You are a coding expert. You have access to two local models: Model A (Qwen3.6-35B-A3B — strong vision + general) and Model B (Qwen3-Coder-Next — specialized coding). For tasks involving screenshots or UI, prefer Model A. For pure complex algorithms or large refactors, use Model B. Always explain which model you're routing to and why."
+
+
+
 ## Learnings
 - CLAUDE.md is essential
 - Limit available tools to e.g. "Bash,Edit,Read,Write,Glob,Grep"
-- Agent choise is essential
+- Agent choice is essential
 - 
 
-## CLAUDE.md is essential
+
+MLX/GGUF <-> Headroom (token compression) <-> Claude Code
+
+
+GGUF: (llama.cpp)
+- Qwen3.6-27B-Q4_K_M.gguf
+- unsloth/Qwen3.6-27B-GGUF:UD-Q5_K_XL
+(    --hf-repo "unsloth/Qwen3.6-27B-GGUF"
+    --hf-file "Qwen3.6-27B-UD-Q5_K_XL.gguf"
+)
+
+MLX: (LMStudio)
+- unsloth/Qwen3.6-27B-UD-MLX-6bit
+- unsloth/Qwen3.6-27B-UD-MLX-4bit
+
+## Different Agent?
+- Claude Code alternative since it was leaked? Open Claude?
+
+omlx instead of lmstudio?
+
+
+
+## What is optimal use of claude code with local llms?
+
+## CLAUDE.md
 
 ```bash
 ➜  local-llm git:(main) ✗ claude --version
