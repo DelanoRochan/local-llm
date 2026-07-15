@@ -8,8 +8,12 @@ Personal research on optimal stack and LLM parameters for running a local agent 
 - [ ] Great tool calling (bash, curl, cat, etc.)
 - [ ] Streaming output?
 
-## Experiment 1: oMLX + headroom + claude code
+- [ ] Not needed for scaffolding but working with existing code
 
+## Experiment 1: oMLX + headroom + claude code
+TurboQuant KV Cache → 4-bit + ON → Excellent. Keep this.
+SpecPrefill → ON → Good for this model architecture.
+Draft Model → You already have Qwen3-Coder-30B-A3B set. This is speculative decoding and one of the best speed tricks on Apple Silicon.
 
 ## Experiment 2: llama.cpp w/ Turboquant + headroom + claude code
 

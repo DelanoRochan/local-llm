@@ -55,3 +55,43 @@ Keep it under 150 lines.
 
 Read it once at the beginning of a resumed session or after context compaction.
 Do not repeatedly read it during every tool call.
+
+## Evidence and convergence protocol
+
+- Never claim a command, build, test, lint, or typecheck succeeded unless
+  its exit code was 0 in the current turn.
+- Starting a development server does not prove that the production build passes.
+- Quote the exact validation command and result in the final response.
+- If the same command fails twice with substantially the same output:
+  - do not run it again unchanged;
+  - inspect the current directory, relevant manifest, and exact error;
+  - choose a materially different next action.
+- Never state that a file or project is correct solely because it looks plausible.
+- Do not declare completion while any known syntax, build, test, or tool error remains.
+
+## Existing-file editing protocol
+
+- Prefer Edit for small changes to existing files.
+- Use Write on an existing file only for an intentional complete replacement.
+- Before a complete replacement:
+  1. Read the full current file.
+  2. Identify content that must be preserved.
+  3. Write one complete, self-consistent replacement.
+- After replacing a file, immediately reread it and check for:
+  - duplicate imports;
+  - duplicate functions;
+  - duplicate configuration keys;
+  - multiple default exports;
+  - remnants of starter code;
+  - imports of deleted files;
+  - unbalanced JSX, CSS, brackets, or braces.
+- Never merge a replacement implementation with unrelated old file contents.
+
+## Shell-command protocol
+
+- Run project commands from the directory containing the relevant manifest.
+- Use the package-manager scripts declared in package.json.
+- Prefer `npm run build` over invoking Vite through npx when a build script exists.
+- Before running a Node command, read package.json once and identify the exact script.
+- Never use `killall`, `pkill`, or broad process termination.
+- Capture the PID of processes started during the task and terminate only that PID.
